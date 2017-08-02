@@ -92,69 +92,71 @@ namespace XSwap.CLI
 		{
 			var cache = new Dictionary<uint256, Transaction>();
 			var initiator = GetChain(offerData.Initiator.Asset.Chain);
+
+			var redeemHash = offerData.CreateRedeemScript().Hash;
+
+			int offset = 0;
+			int takeCount = 10;
 			while(true)
 			{
-				var redeemHash = offerData.CreateRedeemScript().Hash;
-
-				int offset = 0;
-				int takeCount = 10;
-				while(true)
+				cancellation.ThrowIfCancellationRequested();
+				var transactions = await initiator.RPCClient.SendCommandAsync(RPCOperations.listtransactions, "*", takeCount, offset, true).ConfigureAwait(false);
+				offset += takeCount;
+				if(transactions.Result == null || ((JArray)transactions.Result).Count() == 0)
 				{
-					cancellation.ThrowIfCancellationRequested();
-					var transactions = await initiator.RPCClient.SendCommandAsync(RPCOperations.listtransactions, "*", takeCount, offset, true).ConfigureAwait(false);
-					offset += takeCount;
-					if(transactions.Result == null || ((JArray)transactions.Result).Count() == 0)
+					offset = 0;
+					await Task.Delay(1000, cancellation).ConfigureAwait(false);
+					continue;
+				}
+				foreach(var tx in ((JArray)transactions.Result))
+				{
+					int confirmation = 0;
+					if(tx.Contains("confirmations"))
+						confirmation = tx["confirmations"].Value<int>();
+					if(confirmation > 144)
 						break;
-					foreach(var tx in ((JArray)transactions.Result))
+
+					var txId = new uint256(tx["txid"].Value<string>());
+					var batch = initiator.RPCClient.PrepareBatch();
+					var responses = new List<Task<RPCResponse>>();
+					Transaction txObj = null;
+					if(!cache.TryGetValue(txId, out txObj))
 					{
-						int confirmation = 0;
-						if(tx.Contains("confirmations"))
-							confirmation = tx["confirmations"].Value<int>();
-						if(confirmation > 144)
-							break;
+						responses.Add(batch.SendCommandAsync("gettransaction", txId.ToString(), true));
+					}
 
-						var txId = new uint256(tx["txid"].Value<string>());
-						var batch = initiator.RPCClient.PrepareBatch();
-						var responses = new List<Task<RPCResponse>>();
-						Transaction txObj = null;
-						if(!cache.TryGetValue(txId, out txObj))
+					if(responses.Count != 0)
+					{
+						await batch.SendBatchAsync().ConfigureAwait(false);
+						foreach(var gettx in responses)
 						{
-							responses.Add(batch.SendCommandAsync("gettransaction", txId.ToString(), true));
+							var result = await gettx.ConfigureAwait(false);
+							txObj = new Transaction((string)result.Result["hex"]);
+							cache.TryAdd(txId, txObj);
 						}
+					}
 
-						if(responses.Count != 0)
+					foreach(var input in txObj.Inputs)
+					{
+						if(PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig, redeemHash) != null)
 						{
-							await batch.SendBatchAsync().ConfigureAwait(false);
-							foreach(var gettx in responses)
+							foreach(var op in input.ScriptSig.ToOps())
 							{
-								var result = await gettx.ConfigureAwait(false);
-								txObj = new Transaction((string)result.Result["hex"]);
-								cache.TryAdd(txId, txObj);
-							}
-						}
-
-						foreach(var input in txObj.Inputs)
-						{
-							if(PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig, redeemHash) != null)
-							{
-								foreach(var op in input.ScriptSig.ToOps())
+								if(op.PushData != null)
 								{
-									if(op.PushData != null)
+									var preimage = new Preimage(op.PushData);
+									if(preimage.GetHash() == offerData.Hash)
 									{
-										var preimage = new Preimage(op.PushData);
-										if(preimage.GetHash() == offerData.Hash)
-										{
-											_Repository.SavePreimage(preimage);
-											return true;
-										}
+										_Repository.SavePreimage(preimage);
+										return true;
 									}
 								}
 							}
 						}
-						await Task.Delay(1000, cancellation).ConfigureAwait(false);
 					}
 				}
 			}
+
 		}
 
 		private async Task<uint256> WaitConfirmationCoreAsync(SupportedChain chain, Script scriptPubKey, Money amount, int confCount, CancellationToken cancellation)
