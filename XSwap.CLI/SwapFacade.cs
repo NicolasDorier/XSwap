@@ -104,7 +104,7 @@ namespace XSwap.CLI
 				offset += takeCount;
 				if(transactions.Result == null || ((JArray)transactions.Result).Count() == 0)
 				{
-					offset = 0;
+					offset = -takeCount;
 					await Task.Delay(1000, cancellation).ConfigureAwait(false);
 					continue;
 				}
@@ -153,6 +153,11 @@ namespace XSwap.CLI
 								}
 							}
 						}
+					}
+					if(responses.Count == 0)
+					{
+						offset = -takeCount;
+						await Task.Delay(1000, cancellation).ConfigureAwait(false);
 					}
 				}
 			}
