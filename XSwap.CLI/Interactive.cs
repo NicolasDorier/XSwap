@@ -73,7 +73,6 @@ namespace XSwap.CLI
 		{
 			if(o.Offer == null)
 				throw new FormatException();
-
 			var offer = OfferData.Parse(o.Offer);
 			var counterOffer = offer.CreateCounterOffer();
 			if(Repository.GetPrivateKey(offer.Taker.PubKey) == null)

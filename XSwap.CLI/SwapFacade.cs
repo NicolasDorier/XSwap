@@ -169,6 +169,7 @@ namespace XSwap.CLI
 			var chain = _Chains.Where(c => c.Information.Names.Contains(chainName, StringComparer.OrdinalIgnoreCase)).FirstOrDefault();
 			if(chain == null)
 				throw new ChainUnknownException($"Chain {chainName} is unknown");
+			chain.EnsureIsSetup();
 			return chain;
 		}
 

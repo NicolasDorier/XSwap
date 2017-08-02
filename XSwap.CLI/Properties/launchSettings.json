@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "XSwap.CLI": {
+      "commandName": "Project",
+      "commandLineArgs": "-datadir=BTCB"
+    }
+  }
+}

@@ -90,8 +90,9 @@ namespace XSwap.CLI.Configuration
 				{
 					var name = currency.Names[0].ToLowerInvariant();
 					builder.AppendLine("#" + name + ".rpc.url=" + currency.DefaultRPCUrl.AbsoluteUri);
-					builder.AppendLine("#" + name + ".rpc.user=user");
-					builder.AppendLine("#" + name + ".rpc.password=pass");
+					var creds = currency.DefaultCredential ?? new NetworkCredential("user", "password");
+					builder.AppendLine("#" + name + ".rpc.user=" + creds.UserName);
+					builder.AppendLine("#" + name + ".rpc.password=" + creds.Password);
 					builder.AppendLine("#" + name + ".rpc.cookiefile=" + currency.GetDefaultCookieFilePath());
 					builder.AppendLine();
 				}

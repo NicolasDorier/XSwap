@@ -5,6 +5,7 @@ using NBitcoin;
 using NBitcoin.JsonConverters;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.Net;
 
 namespace XSwap.CLI
 {
@@ -40,6 +41,11 @@ namespace XSwap.CLI
 			get;
 			set;
 		}
+		public NetworkCredential DefaultCredential
+		{
+			get;
+			internal set;
+		}
 
 		public TimeSpan GetTimeSpan(int blockCount)
 		{
@@ -53,6 +59,8 @@ namespace XSwap.CLI
 
 		public string GetDefaultCookieFilePath()
 		{
+			if(DefaultCookieFile == null)
+				return null;
 			var match = Regex.Match(DefaultCookieFile, "~/\\.([^/]*)/(.*)");
 			if(!match.Success)
 				return DefaultCookieFile;

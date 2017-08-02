@@ -120,8 +120,8 @@ namespace XSwap.CLI
 				var url = confArgs.GetOrDefault<string>(prefix + "rpc.url", chainInfo.DefaultRPCUrl.AbsoluteUri);
 				return new RPCArgs()
 				{
-					User = confArgs.GetOrDefault<string>(prefix + "rpc.user", null),
-					Password = confArgs.GetOrDefault<string>(prefix + "rpc.password", null),
+					User = confArgs.GetOrDefault<string>(prefix + "rpc.user", chainInfo.DefaultCredential?.UserName),
+					Password = confArgs.GetOrDefault<string>(prefix + "rpc.password", chainInfo.DefaultCredential?.Password),
 					CookieFile = confArgs.GetOrDefault<string>(prefix + "rpc.cookiefile", chainInfo.GetDefaultCookieFilePath()),
 					Url = url == null ? null : new Uri(url)
 				};
