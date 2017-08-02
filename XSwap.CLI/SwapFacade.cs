@@ -114,12 +114,23 @@ namespace XSwap.CLI
 							break;
 
 						var txId = new uint256(tx["txid"].Value<string>());
+						var batch = initiator.RPCClient.PrepareBatch();
+						var responses = new List<Task<RPCResponse>>();
 						Transaction txObj = null;
 						if(!cache.TryGetValue(txId, out txObj))
 						{
-							var result = await initiator.RPCClient.SendCommandAsync("gettransaction", txId.ToString(), true).ConfigureAwait(false);
-							txObj = new Transaction((string)result.Result["hex"]);
-							cache.TryAdd(txId, txObj);
+							responses.Add(batch.SendCommandAsync("gettransaction", txId.ToString(), true));
+						}
+
+						if(responses.Count != 0)
+						{
+							await batch.SendBatchAsync().ConfigureAwait(false);
+							foreach(var gettx in responses)
+							{
+								var result = await gettx.ConfigureAwait(false);
+								txObj = new Transaction((string)result.Result["hex"]);
+								cache.TryAdd(txId, txObj);
+							}
 						}
 
 						foreach(var input in txObj.Inputs)
@@ -140,6 +151,7 @@ namespace XSwap.CLI
 								}
 							}
 						}
+						await Task.Delay(1000, cancellation).ConfigureAwait(false);
 					}
 				}
 			}
