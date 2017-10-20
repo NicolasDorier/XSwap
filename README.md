@@ -1,27 +1,27 @@
 # XSwap
 
-A utility for making trustless, peer to peer, cross chain exchange.
+A utility for executing a trustless, peer to peer, cross-chain exchange.
 
-# How to use ?
+# Usage
 
-Alice want to send 1 BTC  to Bob against 2 LTC
+Alice wants to send 1 BTC to Bob in return for 2 LTC.
 
 ```
-# Alice asks pubkey to Bob
+# Alice asks for a pubkey from Bob
 
-# Bob run
+# Bob runs
 dotnet run new key
 >> <BobPubKey>
 
-# Alice run 
+# Alice runs 
 dotnet run new offer 1.0 btc 2.0 ltc <BobPubKey>
 >> <BobPubKey><AlicePubkey><Hash>
 
-# Bob run
+# Bob runs
 dotnet run take offer 2.0 ltc 1.0 btc <BobPubKey><AlicePubkey><Hash>
 >> Waiting BTC Escrow...
 
-					# Alice run
+					# Alice runs
 					dotnet run broadcast offer <BobPubKey><AlicePubkey><Hash>
 					>> BTC Escrow broadcasted
 >> BTC Escrow broadcasted
