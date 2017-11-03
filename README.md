@@ -4,6 +4,8 @@ A utility for making trustless, peer to peer, cross chain exchange.
 
 # How to use ?
 
+DISCLAIMER: THIS TOOL IS NOT PRODUCTION READY AND IS MEANT ONLY FOR PROOF OF CONCEPT. FAILURE SCENARIO ARE NOT IMPLEMENTED.
+
 Alice want to send 1 BTC  to Bob against 2 LTC
 
 ```

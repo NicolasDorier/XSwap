@@ -10,6 +10,7 @@ namespace XSwap.CLI
 	{
 		static void Main(string[] args)
 		{
+			Console.WriteLine(String.Join(",", args));
 			Logs.Configure(new FuncLoggerFactory(i => new CustomerConsoleLogger(i, (a, b) => true, false)));
 			try
 			{
@@ -24,6 +25,7 @@ namespace XSwap.CLI
 			}
 			catch(ConfigException ex)
 			{
+				Console.WriteLine(ex.ToString());
 				if(!string.IsNullOrEmpty(ex.Message))
 					Logs.Configuration.LogError(ex.Message);
 			}
