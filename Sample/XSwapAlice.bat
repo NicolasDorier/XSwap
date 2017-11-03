@@ -1,0 +1,1 @@
+dotnet ../XSwap.CLI/bin/Debug/netcoreapp2.0/XSwap.CLI.dll -conf=%cd%\Alice\XSwap\swapper.config -datadir=%cd%\Alice\XSwap

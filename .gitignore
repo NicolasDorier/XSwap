@@ -245,4 +245,5 @@ Seed.dat
 TestData/
 /XSwap.CLI/BTCA
 /XSwap.CLI/BTCB
-/Sample
+/Sample/Bob/XSwap/db/
+/Sample/Alice/XSwap/db/

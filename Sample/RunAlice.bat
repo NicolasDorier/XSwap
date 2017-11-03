@@ -1,0 +1,2 @@
+start "AliceChainA" "C:\Program Files\Bitcoin\bitcoin-qt.exe" -datadir=%cd%/Alice/ChainA -config=%cd%/Alice/ChainA/bitcoin.conf
+start "AliceChainB" "C:\Program Files\Bitcoin\bitcoin-qt.exe" -datadir=%cd%/Alice/ChainB -config=%cd%/Alice/ChainB/bitcoin.conf
