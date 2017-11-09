@@ -7,6 +7,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using System.Threading;
+using System.Text.RegularExpressions;
+using NBitcoin.DataEncoders;
 
 namespace XSwap.CLI
 {
@@ -90,7 +92,7 @@ namespace XSwap.CLI
 
 		public async Task<bool> WaitOfferTakenAsync(OfferData offerData, CancellationToken cancellation = default(CancellationToken))
 		{
-			var cache = new Dictionary<uint256, Transaction>();
+			var decodedTxById = new Dictionary<uint256, JObject>();
 			var initiator = GetChain(offerData.Initiator.Asset.Chain);
 
 			var redeemHash = offerData.CreateRedeemScript().Hash;
@@ -102,63 +104,72 @@ namespace XSwap.CLI
 				cancellation.ThrowIfCancellationRequested();
 				var transactions = await initiator.RPCClient.SendCommandAsync(RPCOperations.listtransactions, "*", takeCount, offset, true).ConfigureAwait(false);
 				offset += takeCount;
+
+				//If we reach end of the list, start over
 				if(transactions.Result == null || ((JArray)transactions.Result).Count() == 0)
 				{
 					offset = 0;
 					await Task.Delay(1000, cancellation).ConfigureAwait(false);
 					continue;
 				}
+
+				bool startOver = false;
+				//Check if the preimage is present
 				foreach(var tx in ((JArray)transactions.Result))
 				{
 					int confirmation = 0;
-					if(tx.Contains("confirmations"))
+					if(tx["confirmations"] != null)
 						confirmation = tx["confirmations"].Value<int>();
+					//Old transaction, skip
 					if(confirmation > 144)
-						break;
+					{
+						startOver = true;
+						continue;
+					}
+					//Coinbase we can't have the preimage
+					var category = tx["category"]?.Value<string>();
+					if(category == "immature" || category == "generate")
+						continue;
 
 					var txId = new uint256(tx["txid"].Value<string>());
-					var batch = initiator.RPCClient.PrepareBatch();
-					var responses = new List<Task<RPCResponse>>();
-					Transaction txObj = null;
-					if(!cache.TryGetValue(txId, out txObj))
+					JObject txObj = null;
+					if(!decodedTxById.TryGetValue(txId, out txObj))
 					{
-						responses.Add(batch.SendCommandAsync("gettransaction", txId.ToString(), true));
+						var getTransaction = await initiator.RPCClient.SendCommandAsync("gettransaction", txId.ToString(), true);
+						var decodeRawTransaction = await initiator.RPCClient.SendCommandAsync("decoderawtransaction", getTransaction.Result["hex"]);
+						txObj = (JObject)decodeRawTransaction.Result;
+						decodedTxById.Add(txId, txObj);
 					}
-
-					if(responses.Count != 0)
+					foreach(var input in txObj["vin"])
 					{
-						await batch.SendBatchAsync().ConfigureAwait(false);
-						foreach(var gettx in responses)
+						var scriptSig = input["scriptSig"]["asm"].Value<string>();
+						var sigParts = scriptSig.Split(' ').ToList();
+						// Add the hash in txin if segwit
+						if(input["txinwitness"] is JArray scriptWitness)
 						{
-							var result = await gettx.ConfigureAwait(false);
-							txObj = new Transaction((string)result.Result["hex"]);
-							cache.TryAdd(txId, txObj);
+							sigParts.AddRange(scriptWitness.Select(c => c.Value<string>()));
 						}
-					}
 
-					foreach(var input in txObj.Inputs)
-					{
-						if(PayToScriptHashTemplate.Instance.ExtractScriptSigParameters(input.ScriptSig, redeemHash) != null)
+						foreach(var sigPart in sigParts)
 						{
-							foreach(var op in input.ScriptSig.ToOps())
+							if(!HexEncoder.IsWellFormed(sigPart))
+								continue;
+							var preimage = new Preimage(Encoders.Hex.DecodeData(sigPart));
+							if(preimage.GetHash() == offerData.Hash)
 							{
-								if(op.PushData != null)
-								{
-									var preimage = new Preimage(op.PushData);
-									if(preimage.GetHash() == offerData.Hash)
-									{
-										_Repository.SavePreimage(preimage);
-										return true;
-									}
-								}
+								_Repository.SavePreimage(preimage);
+								return true;
 							}
 						}
 					}
-					if(responses.Count == 0)
-					{
-						offset = 0;
-						await Task.Delay(1000, cancellation).ConfigureAwait(false);
-					}
+				}
+
+				//If we reach end of the list, start over
+				if(startOver)
+				{
+					offset = 0;
+					await Task.Delay(1000, cancellation).ConfigureAwait(false);
+					continue;
 				}
 			}
 
