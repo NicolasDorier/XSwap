@@ -255,9 +255,8 @@ namespace XSwap.CLI
 			}).ConfigureAwait(false);
 
 			var result = await rpcClient.SendCommandAsync("signrawtransaction", funded.Transaction.ToHex()).ConfigureAwait(false);
-			var signedTx = new Transaction(((JObject)result.Result)["hex"].Value<string>());
-			await rpcClient.SendRawTransactionAsync(signedTx).ConfigureAwait(false);
-			return signedTx.GetHash();
+			var txId = await rpcClient.SendCommandAsync("sendrawtransaction", ((JObject)result.Result)["hex"].Value<string>());
+			return new uint256(txId.Result.Value<string>());
 		}
 
 		public async Task<uint256> BroadcastOffer(OfferData offerData, bool watch)

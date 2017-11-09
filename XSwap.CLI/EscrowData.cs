@@ -1,4 +1,5 @@
 ﻿using NBitcoin;
+using NBitcoin.DataEncoders;
 using NBitcoin.JsonConverters;
 using Newtonsoft.Json;
 using System;
@@ -94,27 +95,57 @@ namespace XSwap.CLI
 
 		public Script CreateRedeemScript()
 		{
-			List<Op> ops = new List<Op>();
+			//List<Op> ops = new List<Op>();
 
-			ops.Add(OpcodeType.OP_DEPTH);
-			ops.Add(OpcodeType.OP_2);
-			ops.Add(OpcodeType.OP_EQUAL);
-			ops.Add(OpcodeType.OP_IF);
+			//ops.Add(OpcodeType.OP_DEPTH);
+			//ops.Add(OpcodeType.OP_2);
+			//ops.Add(OpcodeType.OP_EQUAL);
+			//ops.Add(OpcodeType.OP_IF);
+			//{
+			//	ops.Add(OpcodeType.OP_HASH160);
+			//	ops.Add(Op.GetPushOp(Hash.ToBytes()));
+			//	ops.Add(OpcodeType.OP_EQUALVERIFY);
+			//	ops.Add(Op.GetPushOp(Taker.PubKey.ToBytes()));
+			//}
+			//ops.Add(OpcodeType.OP_ELSE);
+			//{
+			//	ops.Add(Op.GetPushOp(LockTime));
+			//	ops.Add(OpcodeType.OP_CHECKLOCKTIMEVERIFY);
+			//	ops.Add(Op.GetPushOp(Initiator.PubKey.ToBytes()));
+			//}
+			//ops.Add(OpcodeType.OP_ENDIF);
+			//ops.Add(OpcodeType.OP_CHECKSIG);
+			
+			var h = Encoders.Hex.EncodeData(Hash.ToBytes());
+			var taker = Taker.PubKey.ToString();
+			var initiator = Initiator.PubKey.ToString();
+			var lockTime = Encoders.Hex.EncodeData(ToBytes(LockTime));
+			return new Script(Encoders.Hex.DecodeData($"74528763a914{h}8821{taker}67{lockTime}b121{initiator}68ac"));
+		}
+
+		byte[] ToBytes(uint value)
+		{
+			List<byte[]> bytes = new List<byte[]>();
+			if(value == 0)
+				return new byte[] { 0 };
+			if(1 <= value && value < 17)
+				return new byte[] { (byte)(0x50 + value) };
+			if(value <= 0xFF)
 			{
-				ops.Add(OpcodeType.OP_HASH160);
-				ops.Add(Op.GetPushOp(Hash.ToBytes()));
-				ops.Add(OpcodeType.OP_EQUALVERIFY);
-				ops.Add(Op.GetPushOp(Taker.PubKey.ToBytes()));
+				return new byte[] { 1, (byte)value };
 			}
-			ops.Add(OpcodeType.OP_ELSE);
+			if(value <= 0xFFFF)
 			{
-				ops.Add(Op.GetPushOp(LockTime));
-				ops.Add(OpcodeType.OP_CHECKLOCKTIMEVERIFY);
-				ops.Add(Op.GetPushOp(Initiator.PubKey.ToBytes()));
+				return new byte[] { 2, (byte)value, (byte)(value >> 8) };
 			}
-			ops.Add(OpcodeType.OP_ENDIF);
-			ops.Add(OpcodeType.OP_CHECKSIG);
-			return new Script(ops.ToArray());
+			if(value <= 0xFFFFFF)
+			{
+				return new byte[] { 3, (byte)value, (byte)(value >> 8), (byte)(value >> 16) };
+			}
+			else
+			{
+				return new byte[] { 3, (byte)value, (byte)(value >> 8), (byte)(value >> 16), (byte)(value >> 24) };
+			}
 		}
 
 		internal static OfferData Parse(string offer)

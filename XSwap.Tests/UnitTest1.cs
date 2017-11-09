@@ -1,5 +1,8 @@
 using NBitcoin;
+using NBitcoin.DataEncoders;
 using System;
+using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using XSwap.CLI;
 using Xunit;
