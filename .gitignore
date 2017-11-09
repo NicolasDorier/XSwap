@@ -247,3 +247,7 @@ TestData/
 /XSwap.CLI/BTCB
 /Sample/Bob/XSwap/db/
 /Sample/Alice/XSwap/db/
+/Sample/Alice/ChainA/regtest
+/Sample/Alice/ChainB/regtest
+/Sample/Bob/ChainA/regtest
+/Sample/Bob/ChainB/regtest
